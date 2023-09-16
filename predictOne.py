@@ -5,31 +5,33 @@ from datetime import datetime
 import re
 
 label_vocab = {
-    0: "婚后有子女",
-    1: "限制行为能力子女抚养",
-    2: "有夫妻共同财产",
-    3: "支付抚养费",
-    4: "不动产分割",
-    5: "婚后分居",
-    6: "二次起诉离婚",
-    7: "按月给付抚养费",
-    8: "准予离婚",
-    9: "有夫妻共同债务",
-    10: "婚前个人财产",
-    11: "法定离婚",
-    12: "不履行家庭义务",
-    13: "存在非婚生子",
-    14: "适当帮助",
-    15: "不履行离婚协议",
-    16: "损害赔偿",
-    17: "感情不和分居满二年",
-    18: "子女随非抚养权人生活",
-    19: "婚后个人财产"
+    0:"2A：实数大小比较",
+    1:"29：实数与数轴",
+    2:"算术平方根的非负性",
+    3:"立方根的性质",
+    4:"22：算术平方根",
+    5:"整式的加减运算",
+    6:"立方根的表示方法",
+    7:"2C：实数的运算",
+    8:"21：平方根的定义",
+    9:"24：立方根的定义",
+    10:"算术平方根",
+    11:"23：非负数的性质：算术平方根",
+    12:"26：无理数的定义",
+    13:"25：计算器—数的开方",
+    14:"实数的分类",
+    15:"开平方",
+    16:"28：实数的性质",
+    17:"估算无理数大小",
+    18:"27：实数的定义",
+    19:"开立方",
+    20:"算术平方根的定义",
+    21:"2B：估算无理数的大小"
 }
 
 def clean_text(text):
-    text = text.replace("\r", "").replace("\n", "")
-    text = re.sub(r"\\n\n", ".", text)
+    # 替换所有的数字、字母、换行符和空格
+    text = re.sub(r"[a-zA-Z0-9\n\s]", "", text)
     return text
 
 # 预测任务
@@ -52,17 +54,26 @@ def predict(sentence, model, tokenizer, label_vocab):
     result_id = []
     result = []
     for prob in probs:
+        # for c, pred in enumerate(prob):
+        #     if pred > 0.2:
+        #         result_id.append(c)
+        #         result.append("Label:" + str(c) + "," + label_vocab[c] + "," + str(round(pred, 3)))
+        maxpred = 0
+        final_c  = 0
         for c, pred in enumerate(prob):
-            if pred > 0.2:
-                result_id.append(c)
-                result.append("Label:" + str(c) + "," + label_vocab[c] + "," + str(round(pred, 3)))
+            if pred > maxpred:
+                final_c = c
+                maxpred = pred
+        result_id.append(final_c)
+        result.append("Label:" + str(final_c) + "," + label_vocab[final_c] + "," + str(round(maxpred, 3)))
+                
 
     print("预测结果：", result_id)
     print("预测结果：", result)
     return result
 
 # 加载中文ERNIE 3.0预训练模型和分词器
-num_classes = 20
+num_classes = len(label_vocab)
 model = AutoModelForSequenceClassification.from_pretrained('./ernie_ckpt', num_classes=num_classes)
 tokenizer = AutoTokenizer.from_pretrained('./ernie_ckpt')
 # 输入你的句子

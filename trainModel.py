@@ -2,6 +2,7 @@ import os
 import paddle
 import paddlenlp
 from paddlenlp.transformers import AutoModelForSequenceClassification, AutoTokenizer
+
 import pandas as pd
 # 自定义数据集
 import re
@@ -52,7 +53,6 @@ def read_excel_data(labelnum, is_test=False):
     else:
         filepath = 'raw_data/traindata.csv'
 
-    filepath = 'raw_data/traindata.csv'
     data = pd.read_csv(filepath)
     # 取出知识点列
     knowledge = data.loc[:, 'knowledge']
@@ -78,29 +78,13 @@ label_vocab = {
     1:"29：实数与数轴",
     2:"算术平方根的非负性",
     3:"立方根的性质",
-    4:"22：算术平方根",
-    5:"整式的加减运算",
-    6:"立方根的表示方法",
-    7:"2C：实数的运算",
-    8:"21：平方根的定义",
-    9:"24：立方根的定义",
-    10:"算术平方根",
-    11:"23：非负数的性质：算术平方根",
-    12:"26：无理数的定义",
-    13:"25：计算器—数的开方",
-    14:"实数的分类",
-    15:"开平方",
-    16:"28：实数的性质",
-    17:"估算无理数大小",
-    18:"27：实数的定义",
-    19:"开立方",
-    20:"算术平方根的定义",
-    21:"2B：估算无理数的大小"
 }
 
+num_classes = len(label_vocab)
+
 # load_dataset()创建数据集
-train_ds = load_dataset(read_excel_data, is_test=False, lazy=False, labelnum = 22) 
-test_ds = load_dataset(read_excel_data, is_test=True, lazy=False, labelnum = 22)
+train_ds = load_dataset(read_excel_data, is_test=False, lazy=False, labelnum = num_classes) 
+test_ds = load_dataset(read_excel_data, is_test=True, lazy=False, labelnum = num_classes)
 
 # lazy=False，数据集返回为MapDataset类型
 print("数据类型:", type(train_ds))
@@ -114,7 +98,8 @@ print("测试集样例:", test_ds[0])
 
 # 加载中文ERNIE 3.0预训练模型和分词器
 model_name = "ernie-3.0-medium-zh"
-num_classes = 22
+
+bsize  = 128
 model = AutoModelForSequenceClassification.from_pretrained(model_name, num_classes=num_classes)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -132,8 +117,8 @@ test_ds = test_ds.map(trans_func)
 collate_fn = DataCollatorWithPadding(tokenizer)
 
 # 定义BatchSampler，选择批大小和是否随机乱序，进行DataLoader
-train_batch_sampler = BatchSampler(train_ds, batch_size=64, shuffle=True)
-test_batch_sampler = BatchSampler(test_ds, batch_size=64, shuffle=False)
+train_batch_sampler = BatchSampler(train_ds, batch_size=bsize, shuffle=True)
+test_batch_sampler = BatchSampler(test_ds, batch_size=bsize, shuffle=False)
 train_data_loader = DataLoader(dataset=train_ds, batch_sampler=train_batch_sampler, collate_fn=collate_fn)
 test_data_loader = DataLoader(dataset=test_ds, batch_sampler=test_batch_sampler, collate_fn=collate_fn)
 
@@ -150,7 +135,6 @@ tic_train = time.time()
 best_f1_score = 0
 for epoch in range(1, epochs + 1):
     for step, batch in enumerate(train_data_loader, start=1):
-        print("global_step:", global_step)
         input_ids, token_type_ids, labels = batch['input_ids'], batch['token_type_ids'], batch['labels']
 
         # 计算模型输出、损失函数值、分类概率值、准确率、f1分数
@@ -158,7 +142,10 @@ for epoch in range(1, epochs + 1):
         loss = criterion(logits, labels)
         probs = F.sigmoid(logits)
         metric.update(probs, labels)
-        auc, f1_score, _, _ = metric.accumulate()
+        auc, f1_score, precison, recall = metric.accumulate()
+        print("global step %d, epoch: %d, batch: %d, loss: %.5f, auc: %.5f, f1 score: %.5f, precison: %.5f, recall: %.5f"
+                % (global_step, epoch, step, loss, auc, f1_score, precison, recall))
+
 
         # 每迭代10次，打印损失函数值、准确率、f1分数、计算速度
         global_step += 1
