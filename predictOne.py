@@ -4,30 +4,13 @@ import paddle.nn.functional as F
 from datetime import datetime
 import re
 
-label_vocab = {
-    0:"2A：实数大小比较",
-    1:"29：实数与数轴",
-    2:"算术平方根的非负性",
-    3:"立方根的性质",
-    4:"22：算术平方根",
-    5:"整式的加减运算",
-    6:"立方根的表示方法",
-    7:"2C：实数的运算",
-    8:"21：平方根的定义",
-    9:"24：立方根的定义",
-    10:"算术平方根",
-    11:"23：非负数的性质：算术平方根",
-    12:"26：无理数的定义",
-    13:"25：计算器—数的开方",
-    14:"实数的分类",
-    15:"开平方",
-    16:"28：实数的性质",
-    17:"估算无理数大小",
-    18:"27：实数的定义",
-    19:"开立方",
-    20:"算术平方根的定义",
-    21:"2B：估算无理数的大小"
-}
+label_vocab = { 
+    0:"22：算术平方根",
+    1:"21：平方根的定义",
+    2:"I6：几何体的展开图",
+    3:"MJ：圆与圆的位置关系",
+    4:"G8：反比例函数与一次函数的交点问题"
+    }
 
 def clean_text(text):
     # 替换所有的数字、字母、换行符和空格
@@ -76,6 +59,7 @@ def predict(sentence, model, tokenizer, label_vocab):
 num_classes = len(label_vocab)
 model = AutoModelForSequenceClassification.from_pretrained('./ernie_ckpt', num_classes=num_classes)
 tokenizer = AutoTokenizer.from_pretrained('./ernie_ckpt')
+model.eval()
 # 输入你的句子
 # sentence = "2014年8月25日，被告吴某甲向本院提起同居关系子女抚养纠纷诉讼，本院于2014年9月22日作出（2014）温苍龙民初字第572号民事判决书，判决余某与吴某甲所生育的儿子吴某乙由吴某甲抚养至独立生活，余某每年支付抚养费6000元并享有每月探望儿子吴某乙二次的权利。"
 while True:

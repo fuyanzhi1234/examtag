@@ -66,19 +66,20 @@ def read_excel_data(labelnum, is_test=False):
         if len(examClean) <= 10:
             continue
         # 将labels转换为One-hot表示
-        labels = [float(1) if i == knowledge[index] else float(0) for i in range(labelnum)]
+        labels = [float(1) if str(i) in knowledge[index].split(',') else float(0) for i in range(labelnum)]
 
         print({"text": clean_text(examClean), "labels": labels})
         yield {"text": clean_text(examClean), "labels": labels}
 
     
 # read_excel_data(22, True)
-label_vocab = {
-    0:"2A：实数大小比较",
-    1:"29：实数与数轴",
-    2:"算术平方根的非负性",
-    3:"立方根的性质",
-}
+label_vocab = { 
+    0:"22：算术平方根",
+    1:"21：平方根的定义",
+    2:"I6：几何体的展开图",
+    3:"MJ：圆与圆的位置关系",
+    4:"G8：反比例函数与一次函数的交点问题"
+    }
 
 num_classes = len(label_vocab)
 
