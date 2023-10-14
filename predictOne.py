@@ -4,17 +4,50 @@ import paddle.nn.functional as F
 from datetime import datetime
 import re
 
-label_vocab = { 
-    0:"22：算术平方根",
-    1:"21：平方根的定义",
-    2:"I6：几何体的展开图",
-    3:"MJ：圆与圆的位置关系",
-    4:"G8：反比例函数与一次函数的交点问题"
+label_vocab = {
+    0:"",
+    1:"1F：非负数的性质：偶次方",
+    2:"",
+    3:"1E：有理数的乘方",
+    4:"",
+    5:"1H：近似数和有效数字",
+    6:"1G：有理数的混合运算",
+    7:"",
+    8:"",
+    9:"",
+    10:"",
+    11:"",
+    12:"",
+    13:"18：有理数比较大小",
+    14:"",
+    15:"1D：有理数的除法",
+    16:"",
+    17:"",
+    18:"",
+    19:"14：相反数",
+    20:"",
+    21:"13：数轴",
+    22:"16：非负数的性质：绝对值",
+    23:"15：绝对值",
+    24:"",
+    25:"17：倒数",
+    26:"",
+    27:"",
+    28:"1I：科学记数法—表示较大的数",
+    29:"1K：科学记数法—原数",
+    30:"1J：科学记数法—表示较小的数",
+    31:"",
+    32:"1M：计算器—基础知识",
+    33:"1L：科学记数法与有效数字",
+    34:"1O：数学常识",
+    35:"12：有理数",
+    36:"1N：用计算器进行有理数计算",
+    37:"11：正数和负数"
     }
 
 def clean_text(text):
     # 替换所有的数字、字母、换行符和空格
-    text = re.sub(r"[a-zA-Z0-9\n\s]", "", text)
+    text = re.sub(r"[\n\s]", "", text)
     return text
 
 # 预测任务
@@ -37,18 +70,18 @@ def predict(sentence, model, tokenizer, label_vocab):
     result_id = []
     result = []
     for prob in probs:
-        # for c, pred in enumerate(prob):
-        #     if pred > 0.2:
-        #         result_id.append(c)
-        #         result.append("Label:" + str(c) + "," + label_vocab[c] + "," + str(round(pred, 3)))
-        maxpred = 0
-        final_c  = 0
         for c, pred in enumerate(prob):
-            if pred > maxpred:
-                final_c = c
-                maxpred = pred
-        result_id.append(final_c)
-        result.append("Label:" + str(final_c) + "," + label_vocab[final_c] + "," + str(round(maxpred, 3)))
+            if pred > 0.2:
+                result_id.append(c)
+                result.append("Label:" + str(c) + "," + label_vocab[c] + "," + str(round(pred, 3)))
+        # maxpred = 0
+        # final_c  = 0
+        # for c, pred in enumerate(prob):
+        #     if pred > maxpred:
+        #         final_c = c
+        #         maxpred = pred
+        # result_id.append(final_c)
+        # result.append("Label:" + str(final_c) + "," + label_vocab[final_c] + "," + str(round(maxpred, 3)))
                 
 
     print("预测结果：", result_id)

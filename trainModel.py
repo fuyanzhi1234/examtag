@@ -22,7 +22,7 @@ from eval import evaluate
 
 def clean_text(text):
     # 替换所有的数字、字母、换行符和空格
-    text = re.sub(r"[a-zA-Z0-9\n\s]", "", text)
+    text = re.sub(r"[\n\s]", "", text)
     return text
 
 # 定义读取数据集函数
@@ -73,12 +73,45 @@ def read_excel_data(labelnum, is_test=False):
 
     
 # read_excel_data(22, True)
-label_vocab = { 
-    0:"22：算术平方根",
-    1:"21：平方根的定义",
-    2:"I6：几何体的展开图",
-    3:"MJ：圆与圆的位置关系",
-    4:"G8：反比例函数与一次函数的交点问题"
+label_vocab = {
+    0:"",
+    1:"1F：非负数的性质：偶次方",
+    2:"",
+    3:"1E：有理数的乘方",
+    4:"",
+    5:"1H：近似数和有效数字",
+    6:"1G：有理数的混合运算",
+    7:"",
+    8:"",
+    9:"",
+    10:"",
+    11:"",
+    12:"",
+    13:"18：有理数比较大小",
+    14:"",
+    15:"1D：有理数的除法",
+    16:"",
+    17:"",
+    18:"",
+    19:"14：相反数",
+    20:"",
+    21:"13：数轴",
+    22:"16：非负数的性质：绝对值",
+    23:"15：绝对值",
+    24:"",
+    25:"17：倒数",
+    26:"",
+    27:"",
+    28:"1I：科学记数法—表示较大的数",
+    29:"1K：科学记数法—原数",
+    30:"1J：科学记数法—表示较小的数",
+    31:"",
+    32:"1M：计算器—基础知识",
+    33:"1L：科学记数法与有效数字",
+    34:"1O：数学常识",
+    35:"12：有理数",
+    36:"1N：用计算器进行有理数计算",
+    37:"11：正数和负数"
     }
 
 num_classes = len(label_vocab)
@@ -128,7 +161,7 @@ optimizer = paddle.optimizer.AdamW(learning_rate=1e-4, parameters=model.paramete
 criterion = paddle.nn.BCEWithLogitsLoss()
 metric = MultiLabelReport()
 
-epochs = 10 # 训练轮次
+epochs = 100 # 训练轮次
 ckpt_dir = "ernie_ckpt" #训练过程中保存模型参数的文件夹
 
 global_step = 0 #迭代次数
@@ -162,8 +195,8 @@ for epoch in range(1, epochs + 1):
         optimizer.step()
         optimizer.clear_grad()
 
-        # 每迭代40次，评估当前训练的模型、保存当前最佳模型参数和分词器的词表等
-        if global_step % 40 == 0:
+        # 每迭代20次，评估当前训练的模型、保存当前最佳模型参数和分词器的词表等
+        if global_step % 20 == 0:
             save_dir = ckpt_dir
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
