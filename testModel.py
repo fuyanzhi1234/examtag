@@ -10,6 +10,7 @@ from paddle.io import DataLoader, BatchSampler
 import functools
 from paddlenlp.data import DataCollatorWithPadding
 import pandas as pd
+import json
 
 def clean_text(text):
     text = text.replace("\r", "").replace("\n", "")
@@ -57,16 +58,23 @@ def read_excel_data(labelnum, is_test=False):
         if len(examClean) <= 10:
             continue
         # 将labels转换为One-hot表示
-        labels = [float(1) if i == knowledge[index] else float(0) for i in range(labelnum)]
+        labels = [float(1) if str(i) in knowledge[index].split(';') else float(0) for i in range(labelnum)]
 
         print({"text": clean_text(examClean), "labels": labels})
         yield {"text": clean_text(examClean), "labels": labels}
 
+def readVocab(jsonName):
+    with open(jsonName, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        print(data)
+        return data
+    
 
+label_vocab = readVocab('raw_data/20231103klmap.json')
 
 # 加载中文ERNIE 3.0预训练模型和分词器
 model_name = "ernie-3.0-medium-zh"
-num_classes = 22
+num_classes = len(label_vocab) + 1
 model = AutoModelForSequenceClassification.from_pretrained(model_name, num_classes=num_classes)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -80,33 +88,8 @@ model.set_dict(paddle.load('ernie_ckpt/model_state.pdparams'))
 # 也可以选择加载预先训练好的模型参数结果查看模型训练结果
 # model.set_dict(paddle.load('ernie_ckpt_trained/model_state.pdparams'))
 
-label_vocab = {
-    0:"2A：实数大小比较",
-    1:"29：实数与数轴",
-    2:"算术平方根的非负性",
-    3:"立方根的性质",
-    4:"22：算术平方根",
-    5:"整式的加减运算",
-    6:"立方根的表示方法",
-    7:"2C：实数的运算",
-    8:"21：平方根的定义",
-    9:"24：立方根的定义",
-    10:"算术平方根",
-    11:"23：非负数的性质：算术平方根",
-    12:"26：无理数的定义",
-    13:"25：计算器—数的开方",
-    14:"实数的分类",
-    15:"开平方",
-    16:"28：实数的性质",
-    17:"估算无理数大小",
-    18:"27：实数的定义",
-    19:"开立方",
-    20:"算术平方根的定义",
-    21:"2B：估算无理数的大小"
-}
-
 # load_dataset()创建数据集
-test_ds = load_dataset(read_excel_data, is_test=True, lazy=False, labelnum = 22)
+test_ds = load_dataset(read_excel_data, is_test=True, lazy=False, labelnum = num_classes)
 print("测试集样例:", test_ds[0])
 
 # 数据预处理函数，利用分词器将文本转化为整数序列
@@ -134,7 +117,7 @@ print("ERNIE 3.0 在法律文本多标签分类test集表现", end= " ")
 
 results = evaluate(model, criterion, metric, test_data_loader, label_vocab)
 
-test_ds = load_dataset(read_excel_data, is_test=True, is_one_hot=False, lazy=False, labelnum = 22)
+test_ds = load_dataset(read_excel_data, is_test=True, is_one_hot=False, lazy=False, labelnum = num_classes)
 res_dir = "./results"
 if not os.path.exists(res_dir):
     os.makedirs(res_dir)

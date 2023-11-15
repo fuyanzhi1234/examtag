@@ -23,7 +23,7 @@ def evaluate(model, criterion, metric, data_loader, label_vocab, if_return_resul
                 result = []
                 for c, pred in enumerate(prob):
                     if pred > 0.5:
-                        result.append(label_vocab[c])
+                        result.append(label_vocab[str(c)])
                 results.append(','.join(result))
 
     auc, f1_score, precison, recall = metric.accumulate()

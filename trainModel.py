@@ -3,10 +3,7 @@ import paddle
 import paddlenlp
 from paddlenlp.transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-import pandas as pd
 # 自定义数据集
-import re
-
 from paddlenlp.datasets import load_dataset
 import functools
 import numpy as np
@@ -16,105 +13,16 @@ from paddlenlp.data import DataCollatorWithPadding
 
 import time
 import paddle.nn.functional as F
-
 from metric import MultiLabelReport
 from eval import evaluate
+from common import clean_text, read_excel_data, readVocab
+import matplotlib.pyplot as plt
 
-def clean_text(text):
-    # 替换所有的数字、字母、换行符和空格
-    text = re.sub(r"[\n\s]", "", text)
-    return text
 
-# 定义读取数据集函数
-def read_custom_data(is_test=False, is_one_hot=True):
 
-    file_num = 6 if is_test else 48
-    filepath = 'raw_data/test/' if is_test else 'raw_data/train/'
 
-    for i in range(file_num):
-        f = open('{}labeled_{}.txt'.format(filepath, i))
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            data = line.strip().split('\t')
-            # 标签用One-hot表示
-            if is_one_hot:
-                labels = [float(1) if str(i) in data[1].split(',') else float(0) for i in range(20)]
-            else:
-                labels = [int(d) for d in data[1].split(',')]
-            yield {"text": clean_text(data[0]), "labels": labels}
-        f.close()
-        
-# 定义读取数据集函数
-def read_excel_data(labelnum, is_test=False):
-    if is_test:
-        filepath = 'raw_data/testdata.csv'
-    else:
-        filepath = 'raw_data/traindata.csv'
-
-    data = pd.read_csv(filepath)
-    # 取出知识点列
-    knowledge = data.loc[:, 'knowledge']
-    # 取出题目列
-    exams = data.loc[:, 'exam']
-    
-    # 遍历exams
-    total = len(exams)
-    for index in range(total):
-        examClean = clean_text(exams[index])
-        if len(examClean) <= 10:
-            continue
-        # 将labels转换为One-hot表示
-        labels = [float(1) if str(i) in knowledge[index].split(',') else float(0) for i in range(labelnum)]
-
-        print({"text": clean_text(examClean), "labels": labels})
-        yield {"text": clean_text(examClean), "labels": labels}
-
-    
-# read_excel_data(22, True)
-label_vocab = {
-    0:"",
-    1:"1F：非负数的性质：偶次方",
-    2:"",
-    3:"1E：有理数的乘方",
-    4:"",
-    5:"1H：近似数和有效数字",
-    6:"1G：有理数的混合运算",
-    7:"",
-    8:"",
-    9:"",
-    10:"",
-    11:"",
-    12:"",
-    13:"18：有理数比较大小",
-    14:"",
-    15:"1D：有理数的除法",
-    16:"",
-    17:"",
-    18:"",
-    19:"14：相反数",
-    20:"",
-    21:"13：数轴",
-    22:"16：非负数的性质：绝对值",
-    23:"15：绝对值",
-    24:"",
-    25:"17：倒数",
-    26:"",
-    27:"",
-    28:"1I：科学记数法—表示较大的数",
-    29:"1K：科学记数法—原数",
-    30:"1J：科学记数法—表示较小的数",
-    31:"",
-    32:"1M：计算器—基础知识",
-    33:"1L：科学记数法与有效数字",
-    34:"1O：数学常识",
-    35:"12：有理数",
-    36:"1N：用计算器进行有理数计算",
-    37:"11：正数和负数"
-    }
-
-num_classes = len(label_vocab)
+label_vocab = readVocab('raw_data/20231103klmap.json')
+num_classes = len(label_vocab) + 1
 
 # load_dataset()创建数据集
 train_ds = load_dataset(read_excel_data, is_test=False, lazy=False, labelnum = num_classes) 
@@ -133,7 +41,7 @@ print("测试集样例:", test_ds[0])
 # 加载中文ERNIE 3.0预训练模型和分词器
 model_name = "ernie-3.0-medium-zh"
 
-bsize  = 128
+bsize  = 64
 model = AutoModelForSequenceClassification.from_pretrained(model_name, num_classes=num_classes)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -160,6 +68,8 @@ test_data_loader = DataLoader(dataset=test_ds, batch_sampler=test_batch_sampler,
 optimizer = paddle.optimizer.AdamW(learning_rate=1e-4, parameters=model.parameters())
 criterion = paddle.nn.BCEWithLogitsLoss()
 metric = MultiLabelReport()
+# 在之前的模型上继续训练
+# model.set_dict(paddle.load('savedmodel/model_state.pdparams'))
 
 epochs = 100 # 训练轮次
 ckpt_dir = "ernie_ckpt" #训练过程中保存模型参数的文件夹
@@ -167,6 +77,19 @@ ckpt_dir = "ernie_ckpt" #训练过程中保存模型参数的文件夹
 global_step = 0 #迭代次数
 tic_train = time.time()
 best_f1_score = 0
+
+# 画图
+fig = plt.figure()
+# plt.ylim(0, 100)
+plt_acc = fig.add_subplot()
+x = np.arange(1, epochs + 1, 1)
+y = np.zeros(epochs)
+y[0] = 100
+
+# 绘制初始曲线
+linet_acc, = plt_acc.plot(x, y)
+plt_acc.set_title("plt_acc") # 设置标题
+
 for epoch in range(1, epochs + 1):
     for step, batch in enumerate(train_data_loader, start=1):
         input_ids, token_type_ids, labels = batch['input_ids'], batch['token_type_ids'], batch['labels']
@@ -205,4 +128,10 @@ for epoch in range(1, epochs + 1):
                 best_f1_score = eval_f1_score
                 model.save_pretrained(save_dir)
                 tokenizer.save_pretrained(save_dir)
-                
+            # 画图
+            y[epoch - 1] = eval_f1_score * 100
+            linet_acc.set_ydata(y)
+            # 重新绘制图形
+            plt.draw()
+            plt.pause(0.1)
+plt.show()           
